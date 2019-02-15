@@ -49,12 +49,11 @@ library(rjags)
 
 ## JAGS
 
+- [JAGS manual](http://web.sgh.waw.pl/~atoroj/ekonometria_bayesowska/jags_user_manual.pdf)
 - JAGS (Just Another Gibbs Sampler) can be called from R using the following framework:
 1. Definition of the model (in BUGS)
 2. Compile Model
 3. Draw Samples
-
-- [JAGS manual](http://web.sgh.waw.pl/~atoroj/ekonometria_bayesowska/jags_user_manual.pdf)
 
 ## JAGS demo - Basic Regression
 - First we will use JAGS to fit a linear regression model. Use the code in the next slide to do this and answer the following questions.
@@ -65,7 +64,7 @@ library(rjags)
 
 ## Code
 
-```{r}
+```{r, eval = F, echo = T}
 # Simulate Data
 set.seed(02142019)
 alpha.true <- 0
@@ -123,7 +122,7 @@ summary(lm(y~x))
 3. How do your results compare with your expectation?
 
 ## Code 
-```{r, eval = F}
+```{r, eval = F, echo = T}
 # simulate data
 set.seed(02142019)
 num.pts <- 75
