@@ -1,5 +1,5 @@
 ---
-title: "Lecture 12: Bayesian Models"
+title: "Lecture 12: Bayesian Model Fitting"
 output:
   revealjs::revealjs_presentation:
     theme: white
@@ -57,13 +57,20 @@ library(rjags)
 - [JAGS manual](http://web.sgh.waw.pl/~atoroj/ekonometria_bayesowska/jags_user_manual.pdf)
 
 ## JAGS demo - Basic Regression
+- First we will use JAGS to fit a linear regression model. Use the code in the next slide to do this and answer the following questions.
+1. What is the sampling model in this case? Note that dnorm takes the precision (= 1 / variance) as an argument.
+2. What priors are specified in this model?
+3. How do the results match your expectation and that of `lm()`?
+
+
+## Code
 
 ```{r}
 # Simulate Data
 set.seed(02142019)
 alpha.true <- 0
 beta.true <- 1
-sigma.true <- 1
+sigma.true <- 2
 num.pts <- 100
 
 x <- runif(num.pts,0,10)
@@ -77,15 +84,15 @@ data.in <- list(x = x, y = y, N = num.pts)
 model_string <- "model{
   # Likelihood
   for(i in 1:N){
-    y[i]   ~ dnorm(mu[i], tau)
+    y[i]   ~ dnorm(mu[i], sigmasq.inv)
     mu[i] <- alpha + beta * x[i]
   }
 
   # Priors
-  sigma <- 1/sqrt(tau)
+  sigma <- 1 / sqrt(sigmasq.inv)
   alpha ~ dnorm(0, 1.0E-6)
   beta ~ dnorm(0, 1.0E-6)
-  tau ~ dgamma(1E-6, 1E-6)
+  sigmasq.inv ~ dgamma(1E-6, 1E-6)
 }"
 
 # compile model
@@ -109,18 +116,24 @@ summary(lm(y~x))
 
 
 ## JAGS demo - Spatial Regression
+- Next we consider a more complicated regression model using JAGS, that with the exponential covariance function.
 
+1. What is `data.spatial` and how is it used in JAGS?
+2. What priors are used in this case? Do they seem reasonable?
+3. How do your results compare with your expectation?
+
+## Code 
 ```{r, eval = F}
 # simulate data
 set.seed(02142019)
-num.pts <- 100
-sigmasq.true <- 1
-tausq.true <- .10
-phi.true <- 1
+num.pts <- 75
+sigmasq.true <- 3
+tausq.true <- .50
+phi.true <- 2
 x1 <- runif(num.pts, max = 10)
 x2 <- runif(num.pts, max = 10)
 d <- dist(cbind(x1,x2), upper=T, diag = T) %>% as.matrix()
-Omega <- sigmasq.true * exp(-d * phi) + tau.sq * diag(num.pts)
+Omega <- sigmasq.true * exp(-d * phi.true) + tausq.true * diag(num.pts)
 alpha.true <- 0
 beta.true <- 1
 x.reg <- rnorm(num.pts)
@@ -136,7 +149,7 @@ data.spatial <- list(x.reg = x.reg, y = y, N = num.pts, d = d)
 model.spatial <- "model{
 # data | process
   for(i in 1:N){
-    y[i]   ~ dnorm(mu[i], tauv)
+    y[i]   ~ dnorm(mu[i], tausq.inv)
     mu[i] <- alpha + beta * x.reg[i] + W[i]
     muW[i] <- 0
   }
@@ -147,16 +160,16 @@ model.spatial <- "model{
 # parameters  
   alpha ~ dnorm(0, .0001)
   beta ~ dnorm(0, .0001)
-  tauv ~ dgamma(.001, .001)
-  v <- 1 / sqrt(tauv)
-  tauw ~ dgamma(.001, .001)
-  w <- 1 / sqrt(tauw)
-#  phi ~ dgamma(.01, .01)
+  tausq.inv ~ dgamma(.001, .001)
+  tausq <- 1 / tausq.inv
+  sigmasq.inv ~ dgamma(.001, .001)
+  sigmasq <- 1 / sigmasq.inv
+  phi ~ dunif(1 , 3)
   
 # build omega
   for (i in 1:N){
     for (j in 1:N){
-      H[i,j] <- (1/tauw) * exp(-1 *d[i,j])
+      H[i,j] <- (1/sigmasq.inv) * exp(-phi *d[i,j])
     }
   }
   Omega[1:N,1:N] <- inverse(H[1:N,1:N])
@@ -171,15 +184,12 @@ update(model, 10000)
 
 # draw samples
 samp <- coda.samples(model, 
-        variable.names=c("alpha","beta","phi", "v", 'w'), 
+        variable.names=c("alpha","beta","phi", "tausq",'sigmasq'), 
         n.iter=5000)
 
 # plot samples
 summary(samp)
 plot(samp)
-
-# compare with lm
-summary(lm(y~x))
 ```
 
 
